@@ -1,0 +1,5 @@
+recursive-include bevy/static *
+recursive-include bevy/templates *
+recursive-include bevy/locale *
+include LICENSE
+exclude .gitlab-ci.yml

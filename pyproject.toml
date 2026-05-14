@@ -1,0 +1,42 @@
+[project]
+name = "bevy"
+dynamic = ["version"]
+description = "Auto inject data into Bevy"
+readme = "README.rst"
+license = {text = "Apache"}
+keywords = ["pretix"]
+authors = [
+    {name = "Avei", email = "muhammadabdulazizalghofari@gmail.com"},
+]
+maintainers = [
+    {name = "Avei", email = "muhammadabdulazizalghofari@gmail.com"},
+]
+
+dependencies = [
+]
+
+[project.entry-points."pretix.plugin"]
+bevy = "bevy:PretixPluginMeta"
+
+[project.entry-points."distutils.commands"]
+build = "pretix_plugin_build.build:CustomBuild"
+
+[build-system]
+requires = [
+    "setuptools",
+    "pretix-plugin-build",
+]
+
+[project.urls]
+homepage = "https://github.com/gdgbogor/bevy"
+repository = "https://github.com/gdgbogor/bevy"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "bevy.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["pretix*"]
+namespaces = false
