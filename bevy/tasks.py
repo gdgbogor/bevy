@@ -10,6 +10,7 @@ from typing import Optional
 
 import requests
 from django.utils.translation import gettext_lazy as _
+from django_scopes import scopes_disabled
 from pretix.base.models import Event, OrderPosition
 from pretix.celery_app import app
 
@@ -438,18 +439,19 @@ def sync_attendee_to_bevy(self, event_pk: int, position_pk: int, action: str):
         BevySyncError: On configuration or permanent errors (no retry)
     """
     try:
-        # Fetch models
-        try:
-            event = Event.objects.get(pk=event_pk)
-        except Event.DoesNotExist:
-            logger.error("Event not found: pk=%d", event_pk)
-            return
+        # Fetch models - disable scopes since Celery tasks run outside request context
+        with scopes_disabled():
+            try:
+                event = Event.objects.get(pk=event_pk)
+            except Event.DoesNotExist:
+                logger.error("Event not found: pk=%d", event_pk)
+                return
 
-        try:
-            position = OrderPosition.objects.get(pk=position_pk)
-        except OrderPosition.DoesNotExist:
-            logger.error("OrderPosition not found: pk=%d", position_pk)
-            return
+            try:
+                position = OrderPosition.objects.get(pk=position_pk)
+            except OrderPosition.DoesNotExist:
+                logger.error("OrderPosition not found: pk=%d", position_pk)
+                return
 
         # Validate action
         if action not in ("register", "checkin"):

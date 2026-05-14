@@ -1,19 +1,115 @@
-{% extends "pretixcontrol/organizers/base.html" %}
-{% load i18n %}
-{% load bootstrap3 %}
-{% block title %}{% trans "Bevy Integration Settings" %}{% endblock %}
-{% block inner %}
-<form action="" method="post" class="form-horizontal">
+{% extends "pretixcontrol/organizers/base.html" %} {% load i18n %} {% load
+bootstrap3 %} {% block title %}{% trans "Bevy Integration Settings" %}{%
+endblock %} {% block inner %}
+<form action="" method="post" class="form-horizontal" id="bevy-settings-form">
     {% csrf_token %}
     <fieldset>
         <legend>{% trans "Bevy Integration Settings" %}</legend>
-        {% bootstrap_form_errors form %}
-        {% bootstrap_form form layout="horizontal" %}
+        {% bootstrap_form_errors form %} {% bootstrap_form form
+        layout="horizontal" %}
     </fieldset>
+
+    <div class="form-group">
+        <div class="col-md-3"></div>
+        <div class="col-md-9">
+            <button type="button" class="btn btn-info" id="test-connection-btn">
+                <i class="fa fa-plug"></i> {% trans "Test Connection" %}
+            </button>
+            <span
+                id="test-connection-spinner"
+                class="fa fa-spinner fa-spin"
+                style="display: none; margin-left: 10px"
+            ></span>
+        </div>
+    </div>
+
+    <div class="form-group" id="test-result-container" style="display: none">
+        <div class="col-md-3"></div>
+        <div class="col-md-9">
+            <div id="test-result-alert" class="alert" role="alert">
+                <strong id="test-result-message"></strong>
+                <p
+                    id="test-result-details"
+                    style="margin-top: 10px; margin-bottom: 0"
+                ></p>
+            </div>
+        </div>
+    </div>
+
     <div class="form-group submit-group">
         <button type="submit" class="btn btn-primary btn-save">
             {% trans "Save" %}
         </button>
     </div>
 </form>
+
+<script>
+    (function () {
+        var testBtn = document.getElementById("test-connection-btn");
+        var spinner = document.getElementById("test-connection-spinner");
+        var resultContainer = document.getElementById("test-result-container");
+        var resultAlert = document.getElementById("test-result-alert");
+        var resultMessage = document.getElementById("test-result-message");
+        var resultDetails = document.getElementById("test-result-details");
+        var form = document.getElementById("bevy-settings-form");
+
+        testBtn.addEventListener("click", function () {
+            // Show spinner, hide previous results
+            spinner.style.display = "inline";
+            testBtn.disabled = true;
+            resultContainer.style.display = "none";
+
+            // Collect form data
+            var formData = new FormData(form);
+
+            // Make AJAX request
+            fetch(
+                '{% url "plugins:bevy:test_connection_organizer" organizer=request.organizer.slug %}',
+                {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest",
+                    },
+                },
+            )
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    // Hide spinner
+                    spinner.style.display = "none";
+                    testBtn.disabled = false;
+
+                    // Show result
+                    resultContainer.style.display = "block";
+                    resultMessage.textContent =
+                        data.message || "Test completed";
+                    resultDetails.textContent = data.details || "";
+
+                    // Set alert class based on success
+                    resultAlert.className =
+                        "alert " +
+                        (data.success ? "alert-success" : "alert-danger");
+
+                    // Show status code if available
+                    if (data.status_code) {
+                        resultDetails.textContent +=
+                            "\n(HTTP " + data.status_code + ")";
+                    }
+                })
+                .catch(function (error) {
+                    // Hide spinner
+                    spinner.style.display = "none";
+                    testBtn.disabled = false;
+
+                    // Show error
+                    resultContainer.style.display = "block";
+                    resultMessage.textContent = "Request failed";
+                    resultDetails.textContent = error.toString();
+                    resultAlert.className = "alert alert-danger";
+                });
+        });
+    })();
+</script>
 {% endblock %}
