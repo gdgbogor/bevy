@@ -1,25 +1,9 @@
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
-from pretix.base.models import Event, Organizer
+from pretix.base.models import Event
 from pretix.control.views.event import EventSettingsFormView, EventSettingsViewMixin
-from pretix.control.views.organizer import OrganizerSettingsFormView
 
-from .forms import EventSettingsForm, OrganizerSettingsForm
-
-
-class OrganizerSettingsView(OrganizerSettingsFormView):
-    """View for managing organizer-level Bevy settings."""
-
-    model = Organizer
-    permission = "can_change_settings"
-    form_class = OrganizerSettingsForm
-    template_name = "bevy/organizer_settings.html"
-
-    def get_success_url(self):
-        return reverse(
-            "plugins:bevy:organizer_settings",
-            kwargs={"organizer": self.request.organizer.slug},
-        )
+from .forms import EventSettingsForm
 
 
 class EventSettingsView(EventSettingsViewMixin, EventSettingsFormView):

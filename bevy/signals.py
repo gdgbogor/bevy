@@ -5,9 +5,9 @@ from django.dispatch import receiver
 from django.urls import resolve, reverse
 from django.utils.translation import gettext_lazy as _
 from pretix.base.signals import order_paid, register_global_settings
-from pretix.control.signals import nav_event_settings, nav_organizer
+from pretix.control.signals import nav_event_settings
 
-from .forms import EventSettingsForm, OrganizerSettingsForm
+from .forms import EventSettingsForm
 from .tasks import sync_attendee_to_bevy
 
 # Import checkin_created signal - try multiple locations for compatibility
@@ -17,7 +17,6 @@ except ImportError:
     try:
         from pretix.plugins.ticketoutput_pdf.signals import checkin_created
     except ImportError:
-        # Fallback: define a dummy signal if not found
         from django.dispatch import Signal
 
         checkin_created = Signal()
@@ -25,7 +24,7 @@ except ImportError:
 
 @receiver(register_global_settings, dispatch_uid="bevy_register_global_settings")
 def register_global_settings_receiver(sender, **kwargs):
-    """Register global Bevy API settings."""
+    """Register Bevy settings in pretix Global Settings page."""
     return OrderedDict(
         [
             (
@@ -39,34 +38,58 @@ def register_global_settings_receiver(sender, **kwargs):
                     initial="https://gdg.community.dev/api",
                 ),
             ),
+            (
+                "bevy_chapter_id",
+                forms.CharField(
+                    label=_("Bevy Chapter ID"),
+                    help_text=_("Default Bevy chapter ID for all events."),
+                    required=False,
+                    max_length=255,
+                ),
+            ),
+            (
+                "bevy_cookie_json",
+                forms.CharField(
+                    label=_("Bevy Cookie JSON"),
+                    help_text=_(
+                        "Structured cookie JSON from Playwright storage state. "
+                        "Must contain at least 'csrftoken' cookie."
+                    ),
+                    widget=forms.Textarea(attrs={"rows": 6}),
+                    required=False,
+                ),
+            ),
+            (
+                "bevy_cookie",
+                forms.CharField(
+                    label=_("Bevy Cookie (Manual Override)"),
+                    help_text=_("Fallback raw cookie string. Prefer bevy_cookie_json."),
+                    widget=forms.Textarea(attrs={"rows": 4}),
+                    required=False,
+                ),
+            ),
+            (
+                "bevy_csrf_token",
+                forms.CharField(
+                    label=_("Bevy CSRF Token (Manual Override)"),
+                    help_text=_(
+                        "Optional manual override. If empty, derived from csrftoken cookie in JSON."
+                    ),
+                    required=False,
+                    max_length=255,
+                ),
+            ),
         ]
     )
 
 
-@receiver(nav_organizer, dispatch_uid="bevy_nav_organizer_settings")
-def nav_organizer_settings_receiver(sender, organizer, request, **kwargs):
-    """Add Bevy settings tab to organizer settings page."""
-    url = resolve(request.path_info)
-    return [
-        {
-            "label": _("Bevy Integration"),
-            "url": reverse(
-                "plugins:bevy:organizer_settings",
-                kwargs={"organizer": organizer.slug},
-            ),
-            "active": url.namespace == "plugins:bevy"
-            and url.url_name == "organizer_settings",
-        }
-    ]
-
-
 @receiver(nav_event_settings, dispatch_uid="bevy_nav_event_settings")
 def nav_event_settings_receiver(sender, request, **kwargs):
-    """Add Bevy settings tab to event settings page."""
+    """Add Bevy tab to event settings page."""
     url = resolve(request.path_info)
     return [
         {
-            "label": _("Bevy Integration"),
+            "label": _("Bevy"),
             "url": reverse(
                 "plugins:bevy:event_settings",
                 kwargs={
@@ -82,58 +105,39 @@ def nav_event_settings_receiver(sender, request, **kwargs):
 
 @receiver(order_paid, dispatch_uid="bevy_order_paid")
 def order_paid_receiver(sender, order, **kwargs):
-    """
-    Handle order paid signal: register all order positions to Bevy.
-
-    Triggered when an order transitions to paid status. For each order position
-    with an email address, enqueue a background task to register the attendee
-    in Bevy.
-
-    Args:
-        sender: Event instance
-        order: Order instance that was paid
-    """
     event = sender
 
-    # Check if Bevy is configured for this event
     if not event.settings.get("bevy_event_id"):
         return
 
-    if not event.organizer.settings.get("bevy_chapter_id"):
+    from pretix.base.settings import GlobalSettingsHolder
+
+    gs = GlobalSettingsHolder()
+    if not gs.settings.get("bevy_chapter_id"):
         return
 
-    # Enqueue registration task for each position
     for position in order.positions.all():
         sync_attendee_to_bevy.apply_async(
             args=(event.pk, position.pk, "register"),
-            countdown=5,  # Delay 5 seconds to ensure order is fully committed
+            countdown=5,
         )
 
 
 @receiver(checkin_created, dispatch_uid="bevy_checkin_created")
 def checkin_created_receiver(sender, checkin, **kwargs):
-    """
-    Handle checkin created signal: check in attendee in Bevy.
-
-    Triggered when a check-in is recorded for an order position. Enqueues
-    a background task to check in the attendee in Bevy.
-
-    Args:
-        sender: Event instance
-        checkin: Checkin instance that was created
-    """
     event = sender
     position = checkin.position
 
-    # Check if Bevy is configured for this event
     if not event.settings.get("bevy_event_id"):
         return
 
-    if not event.organizer.settings.get("bevy_chapter_id"):
+    from pretix.base.settings import GlobalSettingsHolder
+
+    gs = GlobalSettingsHolder()
+    if not gs.settings.get("bevy_chapter_id"):
         return
 
-    # Enqueue check-in task
     sync_attendee_to_bevy.apply_async(
         args=(event.pk, position.pk, "checkin"),
-        countdown=5,  # Delay 5 seconds to ensure check-in is fully committed
+        countdown=5,
     )
