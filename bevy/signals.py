@@ -5,9 +5,9 @@ from django.dispatch import receiver
 from django.urls import resolve, reverse
 from django.utils.translation import gettext_lazy as _
 from pretix.base.signals import order_paid, register_global_settings
-from pretix.control.signals import nav_event_settings
+from pretix.control.signals import nav_event_settings, nav_organizer
 
-from .forms import EventSettingsForm
+from .forms import EventSettingsForm, OrganizerSettingsForm
 from .tasks import sync_attendee_to_bevy
 
 # Import checkin_created signal - try multiple locations for compatibility
@@ -24,7 +24,7 @@ except ImportError:
 
 @receiver(register_global_settings, dispatch_uid="bevy_register_global_settings")
 def register_global_settings_receiver(sender, **kwargs):
-    """Register Bevy settings in pretix Global Settings page."""
+    """Register Bevy API URL in global settings."""
     return OrderedDict(
         [
             (
@@ -38,49 +38,25 @@ def register_global_settings_receiver(sender, **kwargs):
                     initial="https://gdg.community.dev/api",
                 ),
             ),
-            (
-                "bevy_chapter_id",
-                forms.CharField(
-                    label=_("Bevy Chapter ID"),
-                    help_text=_("Default Bevy chapter ID for all events."),
-                    required=False,
-                    max_length=255,
-                ),
-            ),
-            (
-                "bevy_cookie_json",
-                forms.CharField(
-                    label=_("Bevy Cookie JSON"),
-                    help_text=_(
-                        "Structured cookie JSON from Playwright storage state. "
-                        "Must contain at least 'csrftoken' cookie."
-                    ),
-                    widget=forms.Textarea(attrs={"rows": 6}),
-                    required=False,
-                ),
-            ),
-            (
-                "bevy_cookie",
-                forms.CharField(
-                    label=_("Bevy Cookie (Manual Override)"),
-                    help_text=_("Fallback raw cookie string. Prefer bevy_cookie_json."),
-                    widget=forms.Textarea(attrs={"rows": 4}),
-                    required=False,
-                ),
-            ),
-            (
-                "bevy_csrf_token",
-                forms.CharField(
-                    label=_("Bevy CSRF Token (Manual Override)"),
-                    help_text=_(
-                        "Optional manual override. If empty, derived from csrftoken cookie in JSON."
-                    ),
-                    required=False,
-                    max_length=255,
-                ),
-            ),
         ]
     )
+
+
+@receiver(nav_organizer, dispatch_uid="bevy_nav_organizer_settings")
+def nav_organizer_settings_receiver(sender, organizer, request, **kwargs):
+    """Add Bevy tab to organizer detail page navigation."""
+    url = resolve(request.path_info)
+    return [
+        {
+            "label": _("Bevy"),
+            "url": reverse(
+                "plugins:bevy:organizer_settings",
+                kwargs={"organizer": organizer.slug},
+            ),
+            "active": url.namespace == "plugins:bevy"
+            and url.url_name == "organizer_settings",
+        }
+    ]
 
 
 @receiver(nav_event_settings, dispatch_uid="bevy_nav_event_settings")
@@ -110,10 +86,7 @@ def order_paid_receiver(sender, order, **kwargs):
     if not event.settings.get("bevy_event_id"):
         return
 
-    from pretix.base.settings import GlobalSettingsHolder
-
-    gs = GlobalSettingsHolder()
-    if not gs.settings.get("bevy_chapter_id"):
+    if not event.organizer.settings.get("bevy_chapter_id"):
         return
 
     for position in order.positions.all():
@@ -131,10 +104,7 @@ def checkin_created_receiver(sender, checkin, **kwargs):
     if not event.settings.get("bevy_event_id"):
         return
 
-    from pretix.base.settings import GlobalSettingsHolder
-
-    gs = GlobalSettingsHolder()
-    if not gs.settings.get("bevy_chapter_id"):
+    if not event.organizer.settings.get("bevy_chapter_id"):
         return
 
     sync_attendee_to_bevy.apply_async(
