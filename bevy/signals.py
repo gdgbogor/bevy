@@ -5,7 +5,7 @@ from django.dispatch import receiver
 from django.urls import resolve, reverse
 from django.utils.translation import gettext_lazy as _
 from pretix.base.signals import order_paid, register_global_settings
-from pretix.control.signals import nav_event_settings, nav_organizer_settings
+from pretix.control.signals import nav_event_settings, nav_organizer
 
 from .forms import EventSettingsForm, OrganizerSettingsForm
 from .tasks import sync_attendee_to_bevy
@@ -43,8 +43,8 @@ def register_global_settings_receiver(sender, **kwargs):
     )
 
 
-@receiver(nav_organizer_settings, dispatch_uid="bevy_nav_organizer_settings")
-def nav_organizer_settings_receiver(sender, request, **kwargs):
+@receiver(nav_organizer, dispatch_uid="bevy_nav_organizer_settings")
+def nav_organizer_settings_receiver(sender, organizer, request, **kwargs):
     """Add Bevy settings tab to organizer settings page."""
     url = resolve(request.path_info)
     return [
