@@ -2,15 +2,12 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from pretix.base.models import Event, Organizer
 from pretix.control.views.event import EventSettingsFormView, EventSettingsViewMixin
-from pretix.control.views.organizer import (
-    OrganizerDetailViewMixin,
-    OrganizerSettingsFormView,
-)
+from pretix.control.views.organizer import OrganizerSettingsFormView
 
 from .forms import EventSettingsForm, OrganizerSettingsForm
 
 
-class OrganizerSettingsView(OrganizerDetailViewMixin, OrganizerSettingsFormView):
+class OrganizerSettingsView(OrganizerSettingsFormView):
     """View for managing organizer-level Bevy settings."""
 
     model = Organizer
