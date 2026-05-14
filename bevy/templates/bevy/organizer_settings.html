@@ -1,14 +1,13 @@
 {% extends "pretixcontrol/organizers/base.html" %}
 {% load i18n %}
 {% load bootstrap3 %}
-
 {% block title %}{% trans "Bevy Integration Settings" %}{% endblock %}
-
-{% block inside %}
+{% block inner %}
 <form action="" method="post" class="form-horizontal">
     {% csrf_token %}
     <fieldset>
         <legend>{% trans "Bevy Integration Settings" %}</legend>
+        {% bootstrap_form_errors form %}
         {% bootstrap_form form layout="horizontal" %}
     </fieldset>
     <div class="form-group submit-group">
