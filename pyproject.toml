@@ -3,7 +3,7 @@ name = "bevy"
 dynamic = ["version"]
 description = "Auto inject data into Bevy"
 readme = "README.rst"
-license = {text = "Apache"}
+license = "Apache-2.0"
 keywords = ["pretix"]
 authors = [
     {name = "Avei", email = "muhammadabdulazizalghofari@gmail.com"},
@@ -38,5 +38,5 @@ include-package-data = true
 version = {attr = "bevy.__version__"}
 
 [tool.setuptools.packages.find]
-include = ["pretix*"]
+include = ["bevy*"]
 namespaces = false
