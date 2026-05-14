@@ -52,7 +52,7 @@ def nav_organizer_settings_receiver(sender, organizer, request, **kwargs):
             "label": _("Bevy Integration"),
             "url": reverse(
                 "plugins:bevy:organizer_settings",
-                kwargs={"organizer": request.organizer.slug},
+                kwargs={"organizer": organizer.slug},
             ),
             "active": url.namespace == "plugins:bevy"
             and url.url_name == "organizer_settings",
