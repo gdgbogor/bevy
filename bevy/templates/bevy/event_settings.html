@@ -1,6 +1,10 @@
-{% extends "pretixcontrol/event/settings_base.html" %} {% load i18n %} {% load
-bootstrap3 %} {% block title %}{% trans "Bevy Integration Settings" %}{%
-endblock %} {% block inside %}
+{% extends "pretixcontrol/event/settings_base.html" %}
+{% load i18n %}
+{% load bootstrap3 %}
+
+{% block title %}{% trans "Bevy Integration Settings" %}{% endblock %}
+
+{% block inside %}
 <form
     action=""
     method="post"
@@ -25,8 +29,7 @@ endblock %} {% block inside %}
                 style="display: none; margin-left: 10px"
             ></span>
             <p class="help-block">
-                {% trans "Test the connection using the current form values and
-                organizer-level authentication settings." %}
+                {% trans "Test the connection using the current form values and organizer-level authentication settings." %}
             </p>
         </div>
     </div>
